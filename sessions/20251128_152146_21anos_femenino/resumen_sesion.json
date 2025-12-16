@@ -1,0 +1,26 @@
+{
+  "duracion_segundos": 120.10000000000001,
+  "puntos_datos": 1201,
+  "ecg": {
+    "promedio": 1.613730907837219,
+    "minimo": 1.5625,
+    "maximo": 1.6650390625,
+    "desviacion": 0.028456859803515283
+  },
+  "temperatura": {
+    "promedio": 36.76032694211601,
+    "minimo": 36.560184099054915,
+    "maximo": 36.95987281838559,
+    "desviacion": 0.11522536139167448
+  },
+  "bpm": {
+    "promedio": 63.298084929225645,
+    "minimo": 44,
+    "maximo": 81,
+    "desviacion": 6.226590504042066
+  },
+  "baseline": {
+    "ecg_voltaje": 1.68818359375,
+    "temperatura_celsius": 36.75138577443103
+  }
+}

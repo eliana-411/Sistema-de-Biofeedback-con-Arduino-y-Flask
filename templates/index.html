@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Biorretroalimentación</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header con indicadores pequeños -->
+        <header>
+            <div class="header-content">
+                <div class="title-section">
+                    <h1>🧠 Sistema de Biorretroalimentación</h1>
+                    <p>Entrenamiento de regulación emocional</p>
+                </div>
+                
+                <!-- Indicadores pequeños tipo batería -->
+                <div class="sensors-mini" id="sensorsMini" style="display: none;">
+                    <div class="sensor-indicator">
+                        <span class="sensor-label">💓 ECG</span>
+                        <div class="battery">
+                            <div class="battery-fill" id="ecgBattery"></div>
+                        </div>
+                        <span class="sensor-value" id="ecgValue">-</span>
+                    </div>
+                    
+                    <div class="sensor-indicator">
+                        <span class="sensor-label">🌡️ Temp</span>
+                        <div class="battery">
+                            <div class="battery-fill" id="tempBattery"></div>
+                        </div>
+                        <span class="sensor-value" id="tempValue">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-indicator" id="connectionStatus">
+                <span class="dot disconnected"></span>
+                <span id="statusText">Desconectado</span>
+            </div>
+        </header>
+
+        <!-- FASE 0: Inicialización -->
+        <section class="phase-card" id="initCard">
+            <h2>Iniciar Sistema</h2>
+            <p>Asegúrate de tener los sensores conectados antes de comenzar</p>
+            <button class="btn btn-primary btn-large" onclick="initializeSystem()">
+                🚀 Iniciar Sistema
+            </button>
+        </section>
+
+        <!-- FASE 1: Hamilton PRE -->
+        <!-- FASE 1: Datos Demográficos -->
+        <section class="phase-card" id="demographicsCard" style="display: none;">
+            <h2>📝 Información del Participante</h2>
+            <p class="subtitle">Por favor proporciona tus datos básicos</p>
+            
+            <form id="demographicsForm" class="demographics-form">
+                <div class="demo-group">
+                    <label for="participantAge">Edad (años):</label>
+                    <input type="number" id="participantAge" name="age" min="18" max="100" required>
+                </div>
+                
+                <div class="demo-group">
+                    <label>Sexo:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="sex" value="masculino" required>
+                            <span>Masculino</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="sex" value="femenino">
+                            <span>Femenino</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="sex" value="no_especifica">
+                            <span>Prefiero no decir</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-large">
+                    Continuar al Cuestionario →
+                </button>
+            </form>
+        </section>
+
+        <!-- FASE 2: Hamilton PRE (ahora es FASE 2) -->
+        <section class="phase-card" id="hamiltonPreCard" style="display: none;">
+            <h2>📋 Cuestionario de Ansiedad</h2>
+            <p class="subtitle">Responde sobre cómo te has sentido <strong>durante la última semana</strong></p>
+
+            <form id="hamiltonPreForm" class="hamilton-form">
+                <!-- Pregunta 1 -->
+                <div class="question-card">
+                    <h3>1. Ansiedad psíquica</h3>
+                    <p class="question-desc">¿Con qué frecuencia te has sentido inquieto, preocupado o nervioso?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q1" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q1" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q1" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q1" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q1" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 2 -->
+                <div class="question-card">
+                    <h3>2. Tensión muscular</h3>
+                    <p class="question-desc">¿Has sentido rigidez, tensión o molestias musculares por nerviosismo?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q2" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q2" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q2" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q2" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q2" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 3 -->
+                <div class="question-card">
+                    <h3>3. Miedo anticipatorio</h3>
+                    <p class="question-desc">¿Has sentido temor o aprehensión frente a situaciones futuras?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q3" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q3" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q3" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q3" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q3" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 4 -->
+                <div class="question-card">
+                    <h3>4. Insomnio</h3>
+                    <p class="question-desc">¿Has tenido problemas para conciliar o mantener el sueño por preocupación?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q4" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q4" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q4" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q4" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q4" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 5 -->
+                <div class="question-card">
+                    <h3>5. Síntomas cardiovasculares</h3>
+                    <p class="question-desc">¿Has tenido palpitaciones, latidos rápidos o sensación de corazón acelerado?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q5" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q5" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q5" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q5" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q5" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 6 -->
+                <div class="question-card">
+                    <h3>6. Síntomas digestivos</h3>
+                    <p class="question-desc">¿Has tenido molestias estomacales, náuseas o pérdida de apetito por ansiedad?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q6" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q6" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q6" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q6" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q6" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <!-- Pregunta 7 -->
+                <div class="question-card">
+                    <h3>7. Agitación / inquietud motora</h3>
+                    <p class="question-desc">¿Te has sentido agitado, incapaz de permanecer quieto o muy inquieto?</p>
+                    <div class="options">
+                        <label><input type="radio" name="q7" value="0" required> 0 - Ninguno</label>
+                        <label><input type="radio" name="q7" value="1"> 1 - Leve</label>
+                        <label><input type="radio" name="q7" value="2"> 2 - Moderado</label>
+                        <label><input type="radio" name="q7" value="3"> 3 - Intenso</label>
+                        <label><input type="radio" name="q7" value="4"> 4 - Muy intenso</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-large">
+                    Continuar al Baseline →
+                </button>
+            </form>
+        </section>
+
+        <!-- FASE 2: Baseline -->
+        <section class="phase-card" id="baselineCard" style="display: none;">
+            <h2>📊 Medición Baseline</h2>
+            <p>Mantente en reposo y respira normalmente durante 30 segundos</p>
+            
+            <div class="input-group">
+                <label>Duración (segundos):</label>
+                <input type="number" id="baselineDuration" value="10" min="5" max="30">
+            </div>
+            
+            <button class="btn btn-primary btn-large" onclick="startBaseline()">
+                Iniciar Baseline
+            </button>
+            
+            <div id="baselineProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="baselineProgressBar"></div>
+                </div>
+                <p id="baselineTimer" class="timer-text">Calculando...</p>
+            </div>
+            
+            <div id="baselineResults" style="display: none;">
+                <div style="display: flex; gap: 30px; justify-content: center; margin: 20px 0;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.9em; color: #7F8C8D; margin-bottom: 5px;">📊 ECG Baseline</div>
+                        <div style="font-size: 1.3em; font-weight: bold; color: var(--primary);" id="baselineECG">--</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.9em; color: #7F8C8D; margin-bottom: 5px;">❤️ BPM Baseline</div>
+                        <div style="font-size: 1.3em; font-weight: bold; color: var(--primary);" id="baselineBPM">--</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.9em; color: #7F8C8D; margin-bottom: 5px;">🌡️ Temperatura Baseline</div>
+                        <div style="font-size: 1.3em; font-weight: bold; color: var(--primary);" id="baselineTemp">--</div>
+                    </div>
+                </div>
+                
+                <button onclick="document.getElementById('baselineCard').style.display='none'; document.getElementById('protocolCard').style.display='block';" class="btn btn-primary">
+                    Continuar al Protocolo
+                </button>
+            </div>
+        </section>
+
+        <!-- FASE 3: Protocolo (Activación + Regulación) -->
+        <section class="phase-card" id="protocolCard" style="display: none;">
+            <h2>🎯 Protocolo de Entrenamiento</h2>
+            
+            <div class="protocol-steps">
+                <div class="protocol-step">
+                    <h3>⚡ Paso 1: Activación</h3>
+                    <p>Realiza tareas estresoras (3-5 min)</p>
+                    <button class="btn btn-warning" onclick="startActivationPhase()">
+                        Iniciar Activación
+                    </button>
+                </div>
+
+                <div class="protocol-step">
+                    <h3>🧘 Paso 2: Regulación</h3>
+                    <p>Ejercicios de respiración y calma (3-5 min)</p>
+                    <button class="btn btn-info" onclick="startRegulationPhase()">
+                        Iniciar Regulación
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn btn-danger" onclick="stopSession()" id="stopBtn" style="display: none;">
+                ⏹ Detener Sesión
+            </button>
+        </section>
+
+        <!-- Tarea Estresora -->
+        <!-- Selección de Juego -->
+        <section class="phase-card" id="gameSelection" style="display: none;">
+            <h2>⚡ Elige tu Desafío de Activación</h2>
+            <p>Selecciona el juego que realizarás durante 60 segundos</p>
+            
+            <div class="game-options">
+                <div class="game-card" onclick="selectGame('math')">
+                    <div class="game-icon">🔢</div>
+                    <h3>Juegos Matemáticos</h3>
+                    <p>Resuelve operaciones lo más rápido posible</p>
+                    <button class="btn-game-select">Seleccionar</button>
+                </div>
+                
+                <div class="game-card" onclick="selectGame('stroop')">
+                    <div class="game-icon">🎨</div>
+                    <h3>Stroop Test</h3>
+                    <p>Di el color de la palabra, no lo que dice</p>
+                    <button class="btn-game-select">Seleccionar</button>
+                </div>
+                
+                <div class="game-card" onclick="selectGame('memory')">
+                    <div class="game-icon">🧠</div>
+                    <h3>Secuencias de Memoria</h3>
+                    <p>Repite la secuencia de colores</p>
+                    <button class="btn-game-select">Seleccionar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Juego 1: Matemáticas -->
+        <section class="phase-card" id="mathGame" style="display: none;">
+            <h2>⚡ Juegos Matemáticos</h2>
+            <p>Resuelve estas operaciones lo más rápido posible</p>
+            
+            <div class="task-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Tiempo:</span>
+                    <span class="stat-value" id="mathTimer">60</span>s
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Correctas:</span>
+                    <span class="stat-value" id="mathScore">0</span>
+                </div>
+            </div>
+            
+            <div class="math-problem">
+                <h3 id="mathQuestion">7 + 8 = ?</h3>
+                <input type="number" id="mathAnswer" placeholder="Tu respuesta">
+                <button class="btn btn-primary" onclick="checkMathAnswer()">Verificar</button>
+            </div>
+            
+            <div id="mathFeedback" class="feedback-text"></div>
+        </section>
+
+        <!-- Juego 2: Stroop Test -->
+        <section class="phase-card" id="stroopGame" style="display: none;">
+            <h2>⚡ Stroop Test</h2>
+            <p>¡Di el COLOR de la palabra, no lo que dice!</p>
+            
+            <div class="task-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Tiempo:</span>
+                    <span class="stat-value" id="stroopTimer">60</span>s
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Correctas:</span>
+                    <span class="stat-value" id="stroopScore">0</span>
+                </div>
+            </div>
+            
+            <div class="stroop-container">
+                <div class="stroop-word" id="stroopWord">ROJO</div>
+                <div class="stroop-buttons">
+                    <button class="btn-stroop btn-stroop-red" onclick="checkStroopAnswer('rojo')">ROJO</button>
+                    <button class="btn-stroop btn-stroop-blue" onclick="checkStroopAnswer('azul')">AZUL</button>
+                    <button class="btn-stroop btn-stroop-green" onclick="checkStroopAnswer('verde')">VERDE</button>
+                    <button class="btn-stroop btn-stroop-yellow" onclick="checkStroopAnswer('amarillo')">AMARILLO</button>
+                </div>
+            </div>
+            
+            <div id="stroopFeedback" class="feedback-text"></div>
+        </section>
+
+        <!-- Juego 3: Memoria -->
+        <section class="phase-card" id="memoryGame" style="display: none;">
+            <h2>⚡ Secuencias de Memoria</h2>
+            <p>Memoriza y repite la secuencia</p>
+            
+            <div class="task-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Tiempo:</span>
+                    <span class="stat-value" id="memoryTimer">60</span>s
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Nivel:</span>
+                    <span class="stat-value" id="memoryLevel">1</span>
+                </div>
+            </div>
+            
+            <div class="memory-container">
+                <div class="memory-status" id="memoryStatus">Observa la secuencia...</div>
+                <div class="memory-grid">
+                    <button class="memory-btn memory-btn-red" onclick="memoryClick('red')"></button>
+                    <button class="memory-btn memory-btn-blue" onclick="memoryClick('blue')"></button>
+                    <button class="memory-btn memory-btn-green" onclick="memoryClick('green')"></button>
+                    <button class="memory-btn memory-btn-yellow" onclick="memoryClick('yellow')"></button>
+                </div>
+            </div>
+            
+            <div id="memoryFeedback" class="feedback-text"></div>
+        </section>
+
+        <!-- Guía de Respiración -->
+        <section class="phase-card breathing-card" id="breathingGuide" style="display: none;">
+            <h2>🌬️ Guía de Respiración</h2>
+            <p class="breathing-instruction">Sigue el ritmo del círculo</p>
+            
+            <div class="breathing-circle" id="breathingCircle"></div>
+            <p id="breathingText" class="breathing-text">Inhala...</p>
+        </section>
+
+        <!--! Aquí iría la parte del Hamilton POST -->
+
+        <!-- FASE 5: Análisis Final -->
+        <section class="phase-card" id="analysisCard" style="display: none;">
+            <h2>📊 Resultados Finales</h2>
+            <!-- GRÁFICAS -->
+            <div class="charts-section">
+                <h3>📉 Evolución Temporal de Sensores</h3>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <canvas id="ecgChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="bpmChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="analysis-grid">
+                <div class="analysis-section">
+                    <h3>Cuestionario Hamilton</h3>
+                    <div class="hamilton-results" id="hamiltonResults">
+                        <div class="result-row">
+                            <span>Ansiedad Psíquica:</span>
+                            <strong id="hamiltonPsychicDisplay">-</strong>
+                            <span class="max-score">/ 16</span>
+                        </div>
+                        <div class="result-row">
+                            <span>Ansiedad Somática:</span>
+                            <strong id="hamiltonSomaticDisplay">-</strong>
+                            <span class="max-score">/ 12</span>
+                        </div>
+                        <div class="result-row total-row">
+                            <span>Total:</span>
+                            <strong id="hamiltonTotalDisplay">-</strong>
+                            <span class="max-score">/ 28</span>
+                        </div>
+                        <div class="anxiety-level" id="anxietyLevelDisplay">
+                            Nivel de ansiedad: -
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h3>Indicadores Fisiológicos</h3>
+                    <div id="physiologicalResults">
+                        <p>Cargando resultados...</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-large" onclick="resetSystem()">
+                🔄 Nueva Sesión
+            </button>
+        </section>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

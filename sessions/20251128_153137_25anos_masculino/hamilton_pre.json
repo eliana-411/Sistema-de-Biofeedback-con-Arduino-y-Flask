@@ -1,0 +1,20 @@
+{
+  "demographics": {
+    "edad": 25,
+    "sexo": "masculino"
+  },
+  "responses": {
+    "q1": 3,
+    "q2": 2,
+    "q3": 3,
+    "q4": 1,
+    "q5": 1,
+    "q6": 2,
+    "q7": 2
+  },
+  "puntuaciones": {
+    "psiquica": 9,
+    "somatica": 5,
+    "total": 14
+  }
+}
