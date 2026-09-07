@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Biorretroalimentación</title>
+    <title>BioBreath</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,8 +14,8 @@
         <header>
             <div class="header-content">
                 <div class="title-section">
-                    <h1>🧠 Sistema de Biorretroalimentación</h1>
-                    <p>Entrenamiento de regulación emocional</p>
+                    <h1>🧠 BioBreath</h1>
+                    <p>Sistema de Biorretroalimentación para Reducción de Ansiedad</p>
                 </div>
                 
                 <!-- Indicadores pequeños tipo batería -->
@@ -48,6 +48,21 @@
         <section class="phase-card" id="initCard">
             <h2>Iniciar Sistema</h2>
             <p>Asegúrate de tener los sensores conectados antes de comenzar</p>
+
+            <div class="mode-selection">
+                <p class="mode-selection-title">Selecciona el modo de funcionamiento:</p>
+                <label class="mode-option">
+                    <input type="radio" name="sensorMode" value="demo" checked>
+                    <span>🎭 Modo Demo</span>
+                    <small>Usa datos simulados sin Arduino</small>
+                </label>
+                <label class="mode-option">
+                    <input type="radio" name="sensorMode" value="arduino">
+                    <span>🔬 Modo Arduino</span>
+                    <small>Lee los sensores conectados por USB</small>
+                </label>
+            </div>
+
             <button class="btn btn-primary btn-large" onclick="initializeSystem()">
                 🚀 Iniciar Sistema
             </button>
@@ -242,7 +257,7 @@
             <div class="protocol-steps">
                 <div class="protocol-step">
                     <h3>⚡ Paso 1: Activación</h3>
-                    <p>Realiza tareas estresoras (3-5 min)</p>
+                    <p>Realiza tareas estresoras (1 min)</p>
                     <button class="btn btn-warning" onclick="startActivationPhase()">
                         Iniciar Activación
                     </button>
@@ -250,7 +265,7 @@
 
                 <div class="protocol-step">
                     <h3>🧘 Paso 2: Regulación</h3>
-                    <p>Ejercicios de respiración y calma (3-5 min)</p>
+                    <p>Ejercicios de respiración y calma (1 min)</p>
                     <button class="btn btn-info" onclick="startRegulationPhase()">
                         Iniciar Regulación
                     </button>
@@ -437,6 +452,10 @@
                     </div>
                 </div>
             </div>
+
+            <button class="btn btn-success btn-large" id="downloadSessionBtn" type="button" style="display: none;" onclick="downloadCurrentSessionReport()">
+                📄 Descargar informe PDF
+            </button>
 
             <button class="btn btn-primary btn-large" onclick="resetSystem()">
                 🔄 Nueva Sesión

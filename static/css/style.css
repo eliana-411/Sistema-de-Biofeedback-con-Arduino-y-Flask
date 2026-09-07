@@ -235,6 +235,51 @@ header {
 }
 
 /* ========================================
+   SELECCION DE MODO DEL SENSOR
+======================================== */
+
+.mode-selection {
+    max-width: 600px;
+    margin: 25px auto;
+}
+
+.mode-selection-title {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 12px;
+}
+
+.mode-option {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border: 2px solid var(--light);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.mode-option:has(input:checked) {
+    border-color: var(--primary);
+    background: #f3f8fe;
+}
+
+.mode-option input {
+    grid-row: span 2;
+}
+
+.mode-option span {
+    font-weight: 600;
+}
+
+.mode-option small {
+    color: var(--gray);
+}
+
+/* ========================================
    DEMOGRAPHICS FORM
 ======================================== */
 

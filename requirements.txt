@@ -1,7 +1,7 @@
-pyserial==3.5
-pandas>=2.2.0
-numpy>=1.26.0
-scipy>=1.11.0
-flask==3.0.0
-flask-socketio==5.3.5
-python-socketio==5.10.0
+pyserial==3.5               # Comunicación serial USB con Arduino
+numpy>=1.26.0               # Operaciones númericas y cálculo de estadísticas
+scipy>=1.11.0               # Detección de picos R en señal ECG (find_peaks)
+flask==3.0.0                # Servidor web HTTP y renderización de templates
+flask-socketio==5.3.5       # Comunicación WebSocket en tiempo real
+python-socketio==5.10.0     # Protocolo Socket.IO para comunicación en tiempo real
+reportlab>=4.0.0            # Generación de informes PDF

@@ -11,6 +11,7 @@ let demographicsData = null;
 let hamiltonPreData = null;
 let currentGame = null;
 let sessionStarted = false;
+let currentSessionName = null;
 
 // Gráficas
 let ecgChart = null;
@@ -102,6 +103,7 @@ socket.on('baseline_complete', function(data) {
 
 socket.on('session_started', function(data) {
     currentPhase = data.phase;
+    currentSessionName = data.session_name;
     document.getElementById('stopBtn').style.display = 'block';
     document.getElementById('sensorsMini').style.display = 'flex';
     showNotification(`Sesión iniciada: ${data.phase}`, 'info');
@@ -123,6 +125,11 @@ socket.on('session_stopped', function(data) {
     document.getElementById('stroopGame').style.display = 'none';
     document.getElementById('memoryGame').style.display = 'none';
     document.getElementById('breathingGuide').style.display = 'none';
+
+    if (data.success && data.session_name) {
+        currentSessionName = data.session_name;
+        document.getElementById('downloadSessionBtn').style.display = 'block';
+    }
     
     // Ir directo a resultados 
     document.getElementById('analysisCard').style.display = 'block';
@@ -171,7 +178,8 @@ socket.on('error', function(data) {
 // ========================================
 
 function initializeSystem() {
-    socket.emit('initialize_system', {});
+    const selectedMode = document.querySelector('input[name="sensorMode"]:checked').value;
+    socket.emit('initialize_system', { mode: selectedMode });
     showNotification('Inicializando sistema...', 'info');
 }
 
@@ -207,6 +215,7 @@ function startActivationPhase() {
 
 function startRegulationPhase() {
     stopCurrentGame();
+    socket.emit('phase_change', { phase: 'regulation' });
     
     document.getElementById('gameSelection').style.display = 'none';
     document.getElementById('mathGame').style.display = 'none';
@@ -233,6 +242,52 @@ function stopSession() {
 
 function resetSystem() {
     socket.emit('reset_system');
+}
+
+async function downloadCurrentSessionReport() {
+    if (!currentSessionName) {
+        showNotification('No hay una sesión disponible para descargar', 'error');
+        return;
+    }
+
+    const chartData = {
+        ecg: document.getElementById('ecgChart')?.toDataURL('image/png'),
+        bpm: document.getElementById('bpmChart')?.toDataURL('image/png'),
+        temperature: document.getElementById('tempChart')?.toDataURL('image/png')
+    };
+
+    try {
+        showNotification('Generando informe PDF...', 'info');
+
+        const response = await fetch(`/download/session/${encodeURIComponent(currentSessionName)}/pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                demographics: demographicsData,
+                hamilton: hamiltonPreData,
+                baseline: baselineData,
+                charts: chartData
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('No se pudo generar el informe');
+        }
+
+        const pdfBlob = await response.blob();
+        const downloadUrl = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${currentSessionName}_informe.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(downloadUrl);
+        showNotification('Informe PDF descargado', 'success');
+    } catch (error) {
+        console.error('Error descargando informe:', error);
+        showNotification('No se pudo generar el informe PDF', 'error');
+    }
 }
 
 function stopCurrentGame() {
@@ -752,13 +807,13 @@ function displayFinalResults() {
     let anxietyLevel = '';
     let anxietyColor = '';
     
-    if (hamiltonPreData.total <= 7) {
+    if (hamiltonPreData.total <= 5) {
         anxietyLevel = '✅ Ansiedad Mínima';
         anxietyColor = '#7ED321';
     } else if (hamiltonPreData.total <= 14) {
         anxietyLevel = '⚠️ Ansiedad Leve-Moderada';
         anxietyColor = '#F5A623';
-    } else if (hamiltonPreData.total <= 21) {
+    } else if (hamiltonPreData.total <= 23) {
         anxietyLevel = '⚠️ Ansiedad Moderada-Alta';
         anxietyColor = '#FF6B6B';
     } else {
