@@ -10,15 +10,16 @@ import numpy as np
 from scipy.signal import find_peaks
 
 class BioSensorSystem:
-    def __init__(self):
+    def __init__(self, demo_mode=True):
         self.serial_connection = None
         self.connected = False
         self.baseline_ecg = None
         self.baseline_temp = None
+        self.baseline_bpm = None
         
-        #! MODO DEMO - True
-        #! MODO ARDUINO - False
-        self.DEMO_MODE = True
+        #! MODO DEMO - True (datos simulados (sin Arduino))
+        #! MODO ARDUINO - False (lee datos del Arduino por USB)
+        self.DEMO_MODE = demo_mode
         
         # Variables para cálculo de BPM
         self.ecg_window = []  # Ventana deslizante de 10 segundos
@@ -227,7 +228,7 @@ class BioSensorSystem:
             'temperature': temp,
             'ecg_change_percent': ecg_change,
             'temp_change_celsius': temp_change,
-            'bpm': bpm  # ← Ahora siempre está definido
+            'bpm': bpm
         }
     
     def set_baseline(self, duration=10):
@@ -251,6 +252,7 @@ class BioSensorSystem:
         self.baseline_ecg = sum(ecg_values) / len(ecg_values)
         self.baseline_temp = sum(temp_values) / len(temp_values)
         baseline_bpm = sum(bpm_values) / len(bpm_values)
+        self.baseline_bpm = baseline_bpm
         
         print(f"✓ Baseline ECG: {self.baseline_ecg:.4f}V")
         print(f"✓ Baseline Temperatura: {self.baseline_temp:.2f}°C")
@@ -285,9 +287,9 @@ class BioSensorSystem:
                 'demographics': demographics,
                 'responses': hamilton_data['responses'],
                 'puntuaciones': {
-                    'psiquica': hamilton_data['psychic'],    # ← Corregido
-                    'somatica': hamilton_data['somatic'],    # ← Corregido
-                    'total': hamilton_data['total']          # ← Corregido
+                    'psiquica': hamilton_data['psychic'],
+                    'somatica': hamilton_data['somatic'],
+                    'total': hamilton_data['total']
                 }
             }, f, indent=2, ensure_ascii=False)
         
@@ -312,12 +314,32 @@ class BioSensorSystem:
         csv_file = os.path.join(self.session_folder, 'datos_sensores.csv')
         with open(csv_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['timestamp', 'ecg_raw', 'ecg_voltage', 'temperature', 
+            writer.writerow(['timestamp', 'phase', 'ecg_raw', 'ecg_voltage', 'temperature',
                            'ecg_change_percent', 'temp_change_celsius', 'bpm'])
             
+            previous_phase = None
+
             for point in self.session_data:
+                current_point_phase = point.get('phase', 'unknown')
+
+                if previous_phase is not None and current_point_phase != previous_phase:
+                    phase_names = {
+                        'activation': 'ACTIVACIÓN',
+                        'regulation': 'REGULACIÓN'
+                    }
+                    previous_phase_name = phase_names.get(previous_phase, previous_phase.upper())
+                    current_phase_name = phase_names.get(current_point_phase, current_point_phase.upper())
+
+                    writer.writerow([])
+                    writer.writerow([
+                        '',
+                        f'--- CAMBIO DE FASE: {previous_phase_name} -> {current_phase_name} ---'
+                    ])
+                    writer.writerow([])
+
                 writer.writerow([
                     point['timestamp'],
+                    current_point_phase,
                     point['ecg_raw'],
                     point['ecg_voltage'],
                     point['temperature'],
@@ -325,6 +347,8 @@ class BioSensorSystem:
                     point['temp_change_celsius'],
                     point['bpm']
                 ])
+
+                previous_phase = current_point_phase
         
         # Calcular resumen
         ecg_values = [p['ecg_voltage'] for p in self.session_data]
@@ -354,7 +378,8 @@ class BioSensorSystem:
             },
             'baseline': {
                 'ecg_voltaje': self.baseline_ecg,
-                'temperatura_celsius': self.baseline_temp
+                'temperatura_celsius': self.baseline_temp,
+                'bpm': self.baseline_bpm
             }
         }
         
@@ -375,6 +400,19 @@ class BioSensorSystem:
         
         # Verificar si el archivo existe para saber si escribir headers
         file_exists = os.path.exists(csv_consolidado)
+
+        if file_exists:
+            with open(csv_consolidado, 'r', newline='', encoding='utf-8-sig') as existing_file:
+                existing_rows = list(csv.reader(existing_file))
+
+            if existing_rows and 'baseline_bpm' not in existing_rows[0]:
+                baseline_bpm_index = existing_rows[0].index('baseline_temperatura_celsius') + 1
+                existing_rows[0].insert(baseline_bpm_index, 'baseline_bpm')
+                for row in existing_rows[1:]:
+                    row.insert(baseline_bpm_index, '')
+
+                with open(csv_consolidado, 'w', newline='', encoding='utf-8-sig') as migrated_file:
+                    csv.writer(migrated_file).writerows(existing_rows)
         
         with open(csv_consolidado, 'a', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
@@ -388,6 +426,7 @@ class BioSensorSystem:
                     'hamilton_q5', 'hamilton_q6', 'hamilton_q7',
                     'hamilton_psiquica', 'hamilton_somatica', 'hamilton_total',
                     'baseline_ecg_voltaje', 'baseline_temperatura_celsius',
+                    'baseline_bpm',
                     'ecg_promedio', 'ecg_minimo', 'ecg_maximo', 'ecg_desviacion',
                     'temp_promedio', 'temp_minimo', 'temp_maximo', 'temp_desviacion',
                     'bpm_promedio', 'bpm_minimo', 'bpm_maximo', 'bpm_desviacion',
@@ -418,6 +457,7 @@ class BioSensorSystem:
                 hamilton_data['puntuaciones']['total'],
                 summary['baseline']['ecg_voltaje'],
                 summary['baseline']['temperatura_celsius'],
+                summary['baseline']['bpm'],
                 summary['ecg']['promedio'],
                 summary['ecg']['minimo'],
                 summary['ecg']['maximo'],
